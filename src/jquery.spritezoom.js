@@ -1,4 +1,4 @@
-(function($, undefined) {
+(function( $ ) {
 
   $.fn.spritezoom = function(method) {
     if ( methods[method] ) {
@@ -28,10 +28,8 @@
             opacity      : 1.0,
             fadeInSpeed  : undefined,
             fadeOutSpeed : undefined,
-            css          : {
-              border   : "4px solid #ccc",
-	            overflow : "hidden"            
-            }
+            css          : { },
+            enable       : true
           },
           
           tintLayer : {
@@ -39,11 +37,8 @@
             opacity      : 0.5,
             fadeInSpeed  : undefined,
             fadeOutSpeed : undefined,
-            css          : {
-              "background"          : "#888",
-              "background-position" : "2px 2px",    
-              "background-repeat"   : "no-repeat"
-            }
+            css          : { },
+            enable       : true
           },
           
           zoomLayer : {
@@ -55,15 +50,14 @@
             opacity      : 1.0,
             fadeInSpeed  : undefined,
             fadeOutSpeed : undefined,
-            css          : {        
-              border   : "4px solid #ccc",
-              margin   : "-4px"
+            css          : {
             },
             layout : "right",                   // "inner", "top", "right", "left", "bottom", function 
             layoutOffset : {
               top : 0,
               left: 16
-            }
+            },
+            enable       : true
           },
           
           lensLayer : {
@@ -75,13 +69,9 @@
             opacity      : 1.0,
             fadeInSpeed  : undefined,
             fadeOutSpeed : undefined,
-            css          : {
-              overflow : "hidden",
-              border   : "4px solid #888",
-	            margin   : "-4px",
-	            cursor   : "move"       
-            },
-            offset : undefined
+            css          : { },
+            offset       : undefined,
+            enable       : true
           },
           
           mouseLayer : {
@@ -214,9 +204,8 @@
       for (i = 0; i < names.length; i++){
         options = helper.getLayerOptions(names[i], data);
         
-        if (options.layerElement && !options.layerIsVisible){
+        if (options.layerElement && options.layerElement.is(":hidden") && options.enable) {
           options.layerElement.fadeTo(options.fadeInSpeed || data.settings.fadeInSpeed, options.opacity);
-          options.layerIsHidden = false;
           options.layerIsVisible = true;
         }
       }
@@ -227,9 +216,8 @@
       for (i = 0; i < names.length; i++){
         options = helper.getLayerOptions(names[i], data);
         
-        if (options.layerElement && !options.layerIsHidden){
+        if (options.layerElement && options.layerIsVisible){
           options.layerElement.fadeOut(options.fadeOutSpeed || data.settings.fadeOutSpeed);
-          options.layerIsHidden = true;
           options.layerIsVisible = false;
         }
       }
@@ -454,7 +442,7 @@
       zoomCss.top += data.settings.zoomLayer.layoutOffset.top;
       zoomCss.left += data.settings.zoomLayer.layoutOffset.left;
       
-      $.extend(zoomCss, { overflow : "hidden"});
+      $.extend(zoomCss, { overflow : "hidden" });
       data.settings.zoomLayer.layerElement.css(zoomCss);
       
       if (lens.css.width === undefined || lens.css.height === undefined){
@@ -550,6 +538,10 @@
       instance.bind("mousemove.spritezoom", function(e){
         helper.storePoints(e, instance.data('spritezoom'));
       });
+      if (data.settings.onLoad){
+        instance.bind("onLoad.spritezoom", data.settings.onLoad);
+      }
+      
       
       // rebind interaction events
       eventReceiver.bind('mousedown.spritezoom',  helper.eventDelegate);
@@ -667,8 +659,8 @@
         return false; 
       },
       mousemove  : function(e, instance){ 
-        instance.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
         instance.spritezoom("update");
+        instance.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
         return false; 
       },
       mouseup    : function(e, instance){ 

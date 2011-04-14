@@ -10,9 +10,42 @@
       <img src="images/denon-view.jpg"/>
     </a>
     
+    <a href="images/denon-zoom.jpg" class="spritezoom-2">
+      <img src="images/denon-view.jpg"/>
+    </a>
+    
     <script type="text/javascript">
       $(function(){
-        $(".spritezoom").spritezoom({});
+        $(".spritezoom").spritezoom({
+          tintLayer : {
+            enable : false
+          },
+          lensLayer : {
+            enable : false
+          },
+          zoomLayer : {
+            layout : "inner",
+            layoutOffset : {
+              top : 0,
+              left : 0
+            }
+          },
+          onLoad : function(e){
+            $(this).spritezoom("showLayer", ["zoom"]);
+          }
+        });
+        
+        $(".spritezoom-2").spritezoom({
+          tintLayer : {
+            enable : true
+          },
+          lensLayer : {
+            enable : true
+          },
+          onLoad : function(e){
+            $(this).spritezoom("showLayer", ["zoom"]);
+          }
+        });
       });
     </script>
   </body>
