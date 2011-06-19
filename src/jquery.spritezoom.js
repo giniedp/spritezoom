@@ -1,4 +1,4 @@
-(function($, undefined) {
+(function ($) {
 
   $.fn.spritezoom = function(method) {
     if ( methods[method] ) {
@@ -19,6 +19,11 @@
           fadeOutSpeed      : 300,            // general element fade out speed
           behavior          : "standard",     // name of the behavior implementation
           
+          targetCss : {
+            display : "block",
+            border   : "4px solid #ccc",
+            margin   : "-4px"
+          },
           viewLayer : {
             layerElement : null,
             imageElement : null,
@@ -29,7 +34,6 @@
             fadeInSpeed  : undefined,
             fadeOutSpeed : undefined,
             css          : {
-              border   : "4px solid #ccc",
 	            overflow : "hidden"            
             }
           },
@@ -62,7 +66,7 @@
             layout : "right",                   // "inner", "top", "right", "left", "bottom", function 
             layoutOffset : {
               top : 0,
-              left: 16
+              left: 12
             }
           },
           
@@ -119,7 +123,7 @@
           }
           
           // clear the html
-          $this.html("");
+          $this.empty();
           
           // Build the html for each layer
           
@@ -137,6 +141,15 @@
           $this.append(settings.tintLayer.layerElement);
           settings.tintLayer.layerElement.hide();
           
+          // LENS LAYER
+          //   <div class="spritezoom-lens">
+          //     <img src=""></img>
+          //   </div>
+          settings.lensLayer.layerElement = $("<div class='spritezoom-lens'> <img src='" + settings.lensLayer.imageUrl + "'/> </div");
+          settings.lensLayer.imageElement = settings.lensLayer.layerElement.find("img");
+          $this.append(settings.lensLayer.layerElement);
+          settings.lensLayer.layerElement.hide();
+          
           // ZOOM LAYER
           //   <div class="spritezoom-zoom">
           //     <img src=""></img>
@@ -151,14 +164,6 @@
           settings.zoomLayer.imageElement = settings.zoomLayer.layerElement.find("img");
           settings.zoomLayer.layerElement.hide();
           
-          // LENS LAYER
-          //   <div class="spritezoom-lens">
-          //     <img src=""></img>
-          //   </div>
-          settings.lensLayer.layerElement = $("<div class='spritezoom-lens'> <img src='" + settings.lensLayer.imageUrl + "'/> </div");
-          settings.lensLayer.imageElement = settings.lensLayer.layerElement.find("img");
-          $this.append(settings.lensLayer.layerElement);
-          settings.lensLayer.layerElement.hide();
           
           // MOUSE LAYER
           //   <div class="spritezoom.mouse"></div>
@@ -193,7 +198,7 @@
     destroy : function(){
       return this.each(function(){
         var $this = $(this);
-        data = $this.data('spritezoom');
+        var data = $this.data('spritezoom');
         $this.unbind('.spritezoom');
         $this.removeData('spritezoom');
       });
@@ -203,14 +208,15 @@
     update : function(){
       return this.each(function(){
         var $this = $(this);
-        data = $this.data('spritezoom');
+        var data = $this.data('spritezoom');
 
         helper.updateBackground($this, data);
       });
     },
     showLayer : function(names){
       var $this = $(this);
-      data = $this.data('spritezoom');
+      var i;
+      var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
         options = helper.getLayerOptions(names[i], data);
         
@@ -223,7 +229,8 @@
     },
     hideLayer : function(names){
       var $this = $(this);
-      data = $this.data('spritezoom');
+      var i;
+      var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
         options = helper.getLayerOptions(names[i], data);
         
@@ -290,7 +297,6 @@
       if (data.focusX === undefined){ data.focusX = data.targetX; }
       if (data.focusY === undefined){ data.focusY = data.targetY; }
     
-      // TODO: remove this, its for debug only
       data.focusX = data.targetX;
       data.focusY = data.targetY;
       return false;
@@ -321,27 +327,27 @@
       return {};
     },
     cacheImageSize : function(name, data){
-      options = helper.getLayerOptions(name, data);
+      var options = helper.getLayerOptions(name, data);
       if (options.imageElement){
         options.imageWidth  = options.imageElement.innerWidth();
         options.imageHeight = options.imageElement.innerHeight();        
       }
     },
     cacheLayerSize : function(name, data){
-      options = helper.getLayerOptions(name, data);
+      var options = helper.getLayerOptions(name, data);
       if (options.layerElement){
         options.layerWidth  = options.layerElement.innerWidth();
         options.layerHeight = options.layerElement.innerHeight();        
       }
     },
     cacheImageSizes : function(data, names){
-      var i = 0;
+      var i;
       for(i = 0; i < names.length; i++){
         helper.cacheImageSize(names[i], data);
       }
     },
     cacheLayerSizes : function(data, names){
-      var i = 0;
+      var i;
       for(i = 0; i < names.length; i++){
         helper.cacheLayerSize(names[i], data);
       }
@@ -360,7 +366,7 @@
       helper.preloadImages(instance, data, function(){
         // need to make these layers visible to be able to
         // cache the elements sizes. Otherwise
-        // we get width and height of zero for
+        // we the width and height will be zero
         data.settings.zoomLayer.layerElement.show();
         data.settings.tintLayer.layerElement.show();
         data.settings.lensLayer.layerElement.show();
@@ -379,27 +385,34 @@
       });
     },
     initializeBackground : function(instance, data){
-      view = data.settings.viewLayer;
-      zoom = data.settings.zoomLayer;
-      lens = data.settings.lensLayer;
+      var view = data.settings.viewLayer;
+      var tint = data.settings.tintLayer;
+      var zoom = data.settings.zoomLayer;
+      var lens = data.settings.lensLayer;
+      var mouse = data.settings.mouseLayer;
 
-      reference = data.settings.viewLayer;
-      offset    = reference.imageElement.offset();
-      
-      data.settings.viewLayer.layerElement.css({
+      var reference = data.settings.viewLayer;
+      var offset    = { top : 0, left : 0 };
+      var defaultCss = {
+        position : "absolute",
+        top      : offset.top,
+        left     : offset.left,
         width    : reference.imageWidth,
         height   : reference.imageHeight,
         overflow : "hidden"
-      });  
-      data.settings.tintLayer.layerElement.css({
-        position : "absolute",
-        left     : offset.left,
-        top      : offset.top,
-        width    : reference.imageWidth,
-        height   : reference.imageHeight
-      });
+      };
       
-      zoomCss = { };
+      instance.css(defaultCss).css({ 
+        position : "relative", 
+        top : 0, 
+        left : 0, 
+        overflow : "visible" 
+      }).css(data.settings.targetCss);
+      mouse.layerElement.css(defaultCss);  
+      view.layerElement.css(defaultCss);  
+      tint.layerElement.css(defaultCss);
+      
+      var zoomCss = { };
       if (typeof(data.settings.zoomLayer.layout) === "function"){
         zoomCss = data.settings.zoomLayer.layout.apply(instance, [instance, data]);
       } else {
@@ -431,15 +444,6 @@
               height   : reference.imageHeight
             };
           break;
-          case "top":
-            zoomCss = {
-              position : "absolute",
-              top      : offset.top,
-              left     : offset.left - reference.imageWidth,
-              width    : reference.imageWidth,
-              height   : reference.imageHeight
-            };
-          break;
           case "bottom":
             zoomCss = {
               position : "absolute",
@@ -463,60 +467,46 @@
           height : view.imageHeight * (view.imageHeight / zoom.imageHeight)
         });        
       }
-
-      
-      instance.css({
-        width    : reference.imageWidth,
-        height   : reference.imageHeight,
-        overflow : "visible"
-      });
-      
-      data.settings.mouseLayer.layerElement.css({
-        position : "absolute",
-        top      : offset.top,
-        left     : offset.left,
-        width    : reference.imageWidth,
-        height   : reference.imageHeight
-      });  
     },
     updateBackground : function(instance, data){
-      view = data.settings.viewLayer;
-      zoom = data.settings.zoomLayer;
-      lens = data.settings.lensLayer;
+      var view = data.settings.viewLayer;
+      var zoom = data.settings.zoomLayer;
+      var lens = data.settings.lensLayer;
       
-      focusX = data.focusX || 0;
-      focusY = data.focusY || 0;
+      var focusX = data.focusX || 0;
+      var focusY = data.focusY || 0;
       
-      scaleX = zoom.imageWidth  / view.imageWidth;
-      scaleY = zoom.imageHeight / view.imageHeight;
+      var scaleX = zoom.imageWidth  / view.imageWidth;
+      var scaleY = zoom.imageHeight / view.imageHeight;
       
-      x = (zoom.layerWidth  / 2) - focusX * scaleX;
-      y = (zoom.layerHeight / 2) - focusY * scaleY;
+      var x = (zoom.layerWidth  / 2) - focusX * scaleX;
+      var y = (zoom.layerHeight / 2) - focusY * scaleY;
       x = helper.clamp(x, zoom.layerWidth  - zoom.imageWidth,  0);
       y = helper.clamp(y, zoom.layerHeight - zoom.imageHeight, 0);
       
       zoom.imageElement.css({
-        position : "relative",
+        position : "absolute",
         top : y,
         left: x
       });
       
-      offset = view.imageElement.offset();
-      lensX = data.currentX - lens.layerWidth  / 2;
-      lensY = data.currentY - lens.layerHeight / 2;
-      
+      var offset = view.imageElement.position();
+
+      var lensX = focusX - lens.layerWidth  / 2;
+      var lensY = focusY - lens.layerHeight / 2;
+
       switch(typeof(lens.offset)){
         case "object":
-          lensX = data.currentX + lens.offset.left;
-          lensY = data.currentY + lens.offset.top;
+          lensX = focusX + lens.offset.left;
+          lensY = focusY + lens.offset.top;
         break;
         case "function":
           result = lens.offset.apply(instance, [instance, data]);
-          lensX = data.currentX + result.left;
-          lensY = data.currentY + result.top;
+          lensX = focusX + result.left;
+          lensY = focusY + result.top;
         break;
       }
-      
+
       lensX = helper.clamp(lensX, offset.left, offset.left + view.layerWidth  - lens.layerWidth);
       lensY = helper.clamp(lensY, offset.top , offset.top  + view.layerHeight - lens.layerHeight);
 
@@ -680,6 +670,7 @@
         return false; 
       },
       mouseover  : function(e, instance){ 
+        instance.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
         return false; 
       },
       mouseleave : function(e, instance){ 
@@ -723,4 +714,4 @@
       }
     }
   };
-})(jQuery);
+}(jQuery));
