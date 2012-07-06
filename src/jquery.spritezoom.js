@@ -52,11 +52,11 @@
   $.fn.spritezoom = function(method) {
     if ( methods[method] ) {
       return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
-    } else if (typeof(method) === 'object' || !method) {
-      return methods.init.apply(this, arguments);
-    } else {
-      $.error( 'Method ' +  method + ' does not exist on jQuery.spritezoom' );
     }
+    if (typeof(method) === 'object' || !method) {
+      return methods.init.apply(this, arguments);
+    }
+    $.error( 'Method ' +  method + ' does not exist on jQuery.spritezoom' );
   };
 
   var methods = {
@@ -149,7 +149,7 @@
       var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
         el = data[names[i] + "El"];
-        el.hide()
+        el.hide();
       }
     }
   };
@@ -188,8 +188,8 @@
       data.targetY = undefined;  // mouse Y relative to instance element
     },
     clamp : function(value, min, max){
-      if (value < min) return min;
-      if (value > max) return max;
+      if (value < min) { return min; }
+      if (value > max) { return max; }
       return value;
     },
     reconfiger : function(data){
@@ -217,7 +217,7 @@
       };
       data.tintEl.css(css);
       data.viewEl.css(css).css({
-        "background-image" : ["url('", data.source, "')"].join(""),
+        "background-image" : ["url('", data.source, "')"].join("")
       });
       
       var source = (data.layout == "magnify") ? data.zSource : data.source;
@@ -230,12 +230,12 @@
 
       data.zoomEl.css({
         "background-image"    : ["url('", data.zSource, "')"].join(""),
-        "background-repeat"   : "no-repeat",
+        "background-repeat"   : "no-repeat"
       });        
       switch(data.layout){
         case "magnify":
           data.zoomEl.css(css).css({
-            "background-image" : "none",
+            "background-image" : "none"
           });
         break;
         case "inner":
