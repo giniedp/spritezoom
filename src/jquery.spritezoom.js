@@ -1,54 +1,4 @@
-(function () {
-  var Loader = this.SpriteLoader = function(images, callback){
-    if (typeof (images) === "string") { 
-      images = [images]; 
-    }
-    
-    this.callback = callback;
-    this.numLoaded = 0;
-    this.numErrors = 0;
-    this.numAborts = 0;
-    this.numProcessed = 0;
-    this.numImages = images.length;
-    this.images = [];
-    var i = 0;
-    for (i = 0; i < images.length; i += 1 ) {
-      this.load(images[i]); 
-    }
-  };
-  Loader.prototype.load = function(imageSource){
-    var image = new Image();
-    this.images.push(image);
-    image.loader = this;
-    image.onload = function(){
-      this.loader.numLoaded += 1;
-      this.loader.numProcessed += 1;
-      if (this.loader.numProcessed === this.loader.numImages) { 
-        this.loader.callback(this.loader); 
-      }
-    }; 
-    
-    image.onerror = function(){
-      this.loader.numErrors += 1;
-      this.loader.numProcessed += 1;
-      if (this.loader.numProcessed === this.loader.numImages) { 
-        this.loader.callback(this.loader); 
-      }
-    };
-    
-    image.onabort = function(){
-      this.loader.numAborts += 1;
-      this.loader.numProcessed += 1;
-      if (this.loader.numProcessed === this.loader.numImages) { 
-        this.loader.callback(this.loader); 
-      }
-    };
-    image.src = imageSource;
-  };
-}());
-
 (function ($) {
-
   $.fn.spritezoom = function(method) {
     if ( methods[method] ) {
       return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
@@ -66,19 +16,24 @@
         var settings = {
           fadeInSpeed  : 500,            // general element fade in speed
           fadeOutSpeed : 300,            // general element fade out speed
-          behavior     : "standard",     // name of the behavior implementation
-          layout       : "inner",
-          border       : 4,
-          
-          source       : undefined,      // the preview image
-          image        : undefined,
-          title        : undefined,
-          
-          zSource      : undefined,      // the zoom image
+          behavior     : "hover",        // interaction strategy
+          layout       : "inner",        // layout strategy. may be "inner", "top", "right", "bottom", "left", "magnify" or empty
+          border       : 4,              // invisible border around the view. Used to offset the zoom layer
+          // parameter for the preview image
+          source       : undefined,      // the uri to the image
+          image        : undefined,      // the loaded image object (is set by this script)
+          title        : undefined,      // the optional title for the preview image
+          width        : undefined,      // the width of the image or of the visible portion of the image
+          height       : undefined,      // the height of the image or of the visible portion of the image
+          offset       : undefined,      // offset to the visible portion of the image
+          // parameter for the zoom image
+          zSource      : undefined,
           zImage       : undefined,
-          zTitle       : undefined
-        };
-        
+          zTitle       : undefined,
+          zWidth       : undefined,
+          zHeight      : undefined,
+          zOffset      : undefined
+        };        
         // Merge two objects recursively, modifying the settings.
         options = (options || {});
         $.extend(true, settings, options);
@@ -86,9 +41,9 @@
         var $this = $(this);
         var data  = $this.data('spritezoom');
         if (!data){
-          // disable selection
-          $this.attr("unselectable", "on");
-          
+          // IE6 flicker fix
+          try { document.execCommand("BackgroundImageCache", false, true); } catch (e) {}
+
           if ($this.is("a") && $this.children().first().is("img")){
             if (!settings.title){
               settings.title = $this.attr("title");
@@ -101,23 +56,27 @@
             settings.zSource = $this.attr("href");
             $this.click(function(){ return false; });
           }
-          
+          // build html
           $this.empty();
-          
           settings.viewEl = $("<div class='spritezoom-view'></div").appendTo($this);
           settings.tintEl = $("<div class='spritezoom-tint'></div").appendTo($this).hide();
           settings.lensEl = $("<div class='spritezoom-lens'></div").appendTo($this).hide();
           settings.zoomEl = $("<div class='spritezoom-zoom'></div>").appendTo($this).hide();
           settings.target = $this;
-          settings.target.addClass("spritezoom-container");
-          
+          settings.target.addClass("spritezoom-instance");
+          // helper variables per layer
+          settings.view = { el : settings.viewEl, opacity : 1.0 };
+          settings.tint = { el : settings.tintEl, opacity : 0.5 };
+          settings.lens = { el : settings.lensEl, opacity : 1.0 };
+          settings.zoom = { el : settings.zoomEl, opacity : 1.0 };
           settings.touchable = (/iphone|ipod|ipad|android/i).test(navigator.userAgent);
-          
+          // set data and reload plugin
           $this.data('spritezoom', settings);
-          helper.reconfiger(settings);
+          helper.reload(settings);
         } else {
+          // update data and reload plugin
           $.extend(true, data, options);
-          helper.reconfiger(data);
+          helper.reload(data);
         }
       });
     },
@@ -133,23 +92,32 @@
     },
     showLayer : function(names){
       var $this = $(this);
-      var i, el;
+      var i;
       var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
-        el = data[names[i] + "El"];
-        el.show();
-        if (names[i] == "tint"){
-          el.css({ opacity : 0.5 });
+        var d = data[names[i]];
+        if (d.fadingOut || !d.fadingIn){
+          d.fadingOut = false; 
+          d.fadingIn = true;
+          d.el.stop(false, true).fadeTo(data.fadeInSpeed, d.opacity, function(){
+            d.fadingIn = false;
+          });
         }
       }
     },
     hideLayer : function(names){
       var $this = $(this);
-      var i, el;
+      var i;
       var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
-        el = data[names[i] + "El"];
-        el.hide();
+        var d  = data[names[i]];
+        if (!d.fadingOut || d.fadingIn){
+          d.fadingOut = true;
+          d.fadingIn = false;
+          d.el.stop(false, true).fadeTo(data.fadeOutSpeed, 0, function(){
+            d.fadingOut = false;
+          });
+        }
       }
     }
   };
@@ -192,24 +160,47 @@
       if (value > max) { return max; }
       return value;
     },
+    reload : function(data){
+      var loaded = 0;
+      var image = new Image();
+      var zImage = new Image();
+      var onload = function(){ 
+        loaded += 1;
+        if (loaded == 2){
+          data.image = image;
+          data.zImage = zImage;
+          helper.reconfiger(data);
+        }
+      };
+      image.onload = zImage.onload = onload;
+      image.src = data.source;
+      zImage.src = data.zSource;
+    },
     reconfiger : function(data){
-      new SpriteLoader([data.source, data.zSource], function(loader){
-        data.image = loader.images[0];
-        data.zImage = loader.images[1];
+      //new SpriteLoader([data.source, data.zSource], function(loader){
+        //data.image   = loader.images[0];
+        data.width   = (data.width  || data.image.width);
+        data.height  = (data.height || data.image.height);
+        data.offset  = (data.offset || { x:0, y:0 });
+        //data.zImage  = loader.images[1];
+        data.zWidth  = (data.zWidth  || data.zImage.width);
+        data.zHeight = (data.zHeight || data.zImage.height);
+        data.zOffset = (data.zOffset || { x:0, y:0 });
         
         helper.initializeBackground(data);
         helper.updateBackground(data);
         helper.rebindEvents(data);
         data.target.trigger("onLoad", data);
-      });
+      //});
     },
     initializeBackground : function(data){
-      var w = data.image.width;  var zw = data.zImage.height;
-      var h = data.image.height; var zh = data.zImage.height;
+      var w = data.width;  var zw = data.zWidth;
+      var h = data.height; var zh = data.zHeight;
       data.target.css({
         position : "relative", top : 0, left : 0, 
-        overflow : "visible", width : w, height : h
-      }).show();
+        overflow : "visible", 
+        width : w, height : h
+      });
       
       var css = {
         position : "absolute", top : 0, left : 0,
@@ -217,20 +208,24 @@
       };
       data.tintEl.css(css);
       data.viewEl.css(css).css({
-        "background-image" : ["url('", data.source, "')"].join("")
+        "background-image"  : ["url('", data.source, "')"].join(""),
+        "background-repeat" : "no-repeat",
+        "background-position" : [-data.offset.x, "px ", -data.offset.y, "px"].join("")
       });
       
       var source = (data.layout == "magnify") ? data.zSource : data.source;
       data.lensEl.css(css).css({
         "background-image"    : ["url('", source, "')"].join(""),
         "background-repeat"   : "no-repeat",
+        "background-position" : [-data.offset.x, "px ", -data.offset.y, "px"].join(""),
         width  : Math.round(w * 0.25),
         height : Math.round(w * 0.25)
       });
 
       data.zoomEl.css({
         "background-image"    : ["url('", data.zSource, "')"].join(""),
-        "background-repeat"   : "no-repeat"
+        "background-repeat"   : "no-repeat",
+        "background-position" : [-data.zOffset.x, "px ", -data.zOffset.y, "px"].join("")
       });        
       switch(data.layout){
         case "magnify":
@@ -276,95 +271,89 @@
       }
     },
     updateBackground : function(data){
-      var w = data.image.width;  var zw = data.zImage.width; var lw = data.lensEl.innerWidth();
-      var h = data.image.height; var zh = data.zImage.height; var lh = data.lensEl.innerHeight();
+      var w = data.width;  var zw = data.zWidth; var lw = data.lensEl.innerWidth();
+      var h = data.height; var zh = data.zHeight; var lh = data.lensEl.innerHeight();
       var x, y;
       
-      x = data.targetX / w * zw - (w / 2);
-      y = data.targetY / h * zh - (h / 2);
-      x = Math.round(helper.clamp(x, 0, zw - w));
-      y = Math.round(helper.clamp(y, 0, zh - h));
+      x = Math.round(data.targetX / w * zw);
+      y = Math.round(data.targetY / h * zh);
+      x = helper.clamp(x, 0, zw - w) + data.zOffset.x;
+      y = helper.clamp(y, 0, zh - h) + data.zOffset.y;
       data.zoomEl.css({
         "background-position" : [-x, "px ", -y, "px"].join("")
       });
       
-      x = data.targetX - lw / 2;
-      y = data.targetY - lh / 2;
-      x = Math.round(helper.clamp(x, 0, w - lw));
-      y = Math.round(helper.clamp(y, 0, h - lh));
+      x = Math.round(data.targetX - lw * 0.5);
+      y = Math.round(data.targetY - lh * 0.5);
+      x = helper.clamp(x, 0, w - lw);
+      y = helper.clamp(y, 0, h - lh);
       data.lensEl.css({
         position : "absolute", 
         top  : y, 
         left : x
       });
       
-      var image = data.image;
+      var w2 = data.width; 
+      var h2 = data.height;
       var source = data.source;
+      var offset = data.offset;
       if (data.layout == "magnify"){
-        image = data.zImage;
+        w2 = data.zWidth; h2 = data.zHeight;
         source = data.zSource;
+        offset = data.zOffset;
       }
-      x = data.targetX / w * image.width - (lw / 2);
-      y = data.targetY / h * image.height - (lh / 2);
-      x = Math.round(helper.clamp(x, 0, image.width - lw));
-      y = Math.round(helper.clamp(y, 0, image.height - lh));
+      x = Math.round((data.targetX / w) * w2 - (lw * 0.5));
+      y = Math.round((data.targetY / h) * h2 - (lh * 0.5));
+      x = helper.clamp(x, 0, w2 - lw) + offset.x;
+      y = helper.clamp(y, 0, h2 - lh) + offset.y;
       data.lensEl.css({
         "background-position" : [-x, "px ", -y, "px"].join("")
       });
     },
     rebindEvents : function(data){
-      var instance = data.target;
-      instance.unbind('.spritezoom');
+      var $this = data.target;
+      $this.unbind('.spritezoom');
       
-      instance.bind("mousemove.spritezoom", function(e){
-        helper.storePoints(e, instance.data('spritezoom'));
+      $this.bind("mousemove.spritezoom", function(e){
+        helper.storePoints(e, $this.data('spritezoom'));
       });
       
-      var currentBehavior = data.behavior;
+      var beh = data.behavior;
       if (typeof(data.behavior) === "string"){
-        currentBehavior = behavior[data.behavior];
+        beh = behavior[data.behavior];
       }
-      if (!currentBehavior){
-        currentBehavior = behavior.none;
+      if (!beh){
+        beh = {};
       }
       
       // rebind interaction events
-      instance.bind('mousedown.spritezoom',  currentBehavior.mousedown || $.noop);
-      instance.bind('mousemove.spritezoom',  currentBehavior.mousemove || $.noop);
-      instance.bind('mouseup.spritezoom',    currentBehavior.mouseup || $.noop);
-      instance.bind('mouseenter.spritezoom', currentBehavior.mouseenter || $.noop);
-      instance.bind('mouseover.spritezoom',  currentBehavior.mouseover || $.noop);
-      instance.bind('mouseleave.spritezoom', currentBehavior.mouseleave || $.noop);
-      instance.bind('dblclick.spritezoom',   currentBehavior.dblclick || $.noop);
+      $this.bind('mousedown.spritezoom',  beh.mousedown  || $.noop);
+      $this.bind('mousemove.spritezoom',  beh.mousemove  || $.noop);
+      $this.bind('mouseup.spritezoom',    beh.mouseup    || $.noop);
+      $this.bind('mouseenter.spritezoom', beh.mouseenter || $.noop);
+      $this.bind('mouseover.spritezoom',  beh.mouseover  || $.noop);
+      $this.bind('mouseleave.spritezoom', beh.mouseleave || $.noop);
+      $this.bind('dblclick.spritezoom',   beh.dblclick   || $.noop);
 
       if (data.touchable){
-        instance.bind('touchstart.spritezoom',  currentBehavior.touchstart || $.noop);
-        instance.bind('touchmove.spritezoom',   currentBehavior.touchmove || $.noop);
-        instance.bind('touchend.spritezoom',    currentBehavior.touchend || $.noop);
-        instance.bind('touchcancel.spritezoom', currentBehavior.touchcancel || $.noop);
-        instance.bind('click.spritezoom',         helper.prevent); 
-        instance.bind('gesturestart.spritezoom',  helper.prevent); 
-        instance.bind('gesturechange.spritezoom', helper.prevent); 
-        instance.bind('gestureend.spritezoom',    helper.prevent); 
+        $this.bind('touchstart.spritezoom',  beh.touchstart  || $.noop);
+        $this.bind('touchmove.spritezoom',   beh.touchmove   || $.noop);
+        $this.bind('touchend.spritezoom',    beh.touchend    || $.noop);
+        $this.bind('touchcancel.spritezoom', beh.touchcancel || $.noop);
+        $this.bind('click.spritezoom',         helper.prevent); 
+        $this.bind('gesturestart.spritezoom',  helper.prevent); 
+        $this.bind('gesturechange.spritezoom', helper.prevent); 
+        $this.bind('gestureend.spritezoom',    helper.prevent); 
       }
       
       if (typeof(data.onLoad) == "function"){
-        instance.bind("onLoad.spritezoom", data.onLoad);
+        $this.bind("onLoad.spritezoom", data.onLoad);
       }
     }
   };
   
-  var behavior = {    
-    none : {
-      mousedown  : $.noop,
-      mousemove  : $.noop,
-      mouseup    : $.noop,
-      mouseenter : $.noop,
-      mouseover  : $.noop,
-      mouseleave : $.noop,
-      dblclick   : $.noop
-    },
-    standard : {
+  var behavior = {
+    hover : {
       mousedown  : $.noop,
       mousemove  : function(e){ 
         $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
@@ -384,7 +373,7 @@
       },
       dblclick   : $.noop
     },
-    clickZoom : {
+    click : {
       mousedown  : function(e, instance){
         $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
         $(this).spritezoom("update");
