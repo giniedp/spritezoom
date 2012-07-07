@@ -96,7 +96,7 @@
       var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
         var d = data[names[i]];
-        if (d.fadingOut || !d.fadingIn){
+        if (d.fadingOut || !d.fadingIn){
           d.fadingOut = false; 
           d.fadingIn = true;
           d.el.stop(false, true).fadeTo(data.fadeInSpeed, d.opacity, function(){
@@ -111,7 +111,7 @@
       var data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
         var d  = data[names[i]];
-        if (!d.fadingOut || d.fadingIn){
+        if (!d.fadingOut || d.fadingIn){
           d.fadingOut = true;
           d.fadingIn = false;
           d.el.stop(false, true).fadeTo(data.fadeOutSpeed, 0, function(){
