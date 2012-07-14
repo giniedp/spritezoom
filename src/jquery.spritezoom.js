@@ -19,6 +19,7 @@
           behavior     : "hover",        // interaction strategy
           layout       : "inner",        // layout strategy. may be "inner", "top", "right", "bottom", "left", "magnify" or empty
           border       : 4,              // invisible border around the view. Used to offset the zoom layer
+          magSize      : 0.3,
           // parameter for the preview image
           source       : undefined,      // the uri to the image
           image        : undefined,      // the loaded image object (is set by this script)
@@ -218,8 +219,8 @@
         "background-image"    : ["url('", source, "')"].join(""),
         "background-repeat"   : "no-repeat",
         "background-position" : [-data.offset.x, "px ", -data.offset.y, "px"].join(""),
-        width  : Math.round(w * 0.25),
-        height : Math.round(w * 0.25)
+        width  : Math.round(w * data.magSize),
+        height : Math.round(w * data.magSize)
       });
 
       data.zoomEl.css({
@@ -275,8 +276,8 @@
       var h = data.height; var zh = data.zHeight; var lh = data.lensEl.innerHeight();
       var x, y;
       
-      x = Math.round(data.targetX / w * zw);
-      y = Math.round(data.targetY / h * zh);
+      x = Math.round(data.targetX / w * zw - w * 0.5);
+      y = Math.round(data.targetY / h * zh - w * 0.5);
       x = helper.clamp(x, 0, zw - w) + data.zOffset.x;
       y = helper.clamp(y, 0, zh - h) + data.zOffset.y;
       data.zoomEl.css({
