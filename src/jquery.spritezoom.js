@@ -1,12 +1,47 @@
 (function ($) {
-  $.fn.spritezoom = function(method) {
-    if ( methods[method] ) {
-      return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+  var behavior = {
+    hover : {
+      mousedown  : $.noop,
+      mousemove  : function(e, data){ 
+        data.target.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
+        data.target.spritezoom("update");
+      },
+      mouseup    : $.noop,
+      mouseenter : function(e, data){
+        data.target.spritezoom("update");
+        data.target.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
+      },
+      mouseover  : function(e, data){ 
+        data.target.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
+      },
+      mouseleave : function(e, data){ 
+        data.target.spritezoom("hideLayer", ["tint", "zoom", "lens"]);
+        data.target.spritezoom("update");
+      },
+      dblclick   : $.noop
+    },
+    click : {
+      mousedown  : function(e, data){
+        data.target.spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
+        data.target.spritezoom("update");
+      },
+      mousemove  : function(e, data){ 
+        data.target.spritezoom("update");
+      },
+      mouseup    : function(e, data){ 
+        data.target.spritezoom("hideLayer", ["tint", "zoom", "lens"]);
+        data.target.spritezoom("update");
+      },
+      mouseenter : function(e, data){
+        data.target.spritezoom("update");
+      },
+      mouseover  : $.noop,
+      mouseleave : function(e, data){ 
+        data.target.spritezoom("hideLayer", ["tint", "zoom", "lens"]);
+        data.target.spritezoom("update");
+      },
+      dblclick   : $.noop
     }
-    if (typeof(method) === 'object' || !method) {
-      return methods.init.apply(this, arguments);
-    }
-    $.error( 'Method ' +  method + ' does not exist on jQuery.spritezoom' );
   };
 
   var methods = {
@@ -63,6 +98,7 @@
           settings.tintEl = $("<div class='spritezoom-tint'></div").appendTo($this).hide();
           settings.lensEl = $("<div class='spritezoom-lens'></div").appendTo($this).hide();
           settings.zoomEl = $("<div class='spritezoom-zoom'></div>").appendTo($this).hide();
+          settings.sensEl = $("<div class='spritezoom-sens'></div").appendTo($this);
           settings.target = $this;
           settings.target.addClass("spritezoom-instance");
           // helper variables per layer
@@ -93,10 +129,9 @@
     },
     showLayer : function(names){
       var $this = $(this);
-      var i;
-      var data = $this.data('spritezoom');
+      var i, d, data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
-        var d = data[names[i]];
+        d = data[names[i]];
         if (d.fadingOut || !d.fadingIn){
           d.fadingOut = false; 
           d.fadingIn = true;
@@ -108,10 +143,9 @@
     },
     hideLayer : function(names){
       var $this = $(this);
-      var i;
-      var data = $this.data('spritezoom');
+      var i, d, data = $this.data('spritezoom');
       for (i = 0; i < names.length; i++){
-        var d  = data[names[i]];
+        d  = data[names[i]];
         if (!d.fadingOut || d.fadingIn){
           d.fadingOut = true;
           d.fadingIn = false;
@@ -124,11 +158,20 @@
   };
   
   var helper = {
+    wrap: function(callback, data){
+      if (typeof callback === "function"){
+        return function(e){
+          callback.apply(data.target, [e, data]);
+        };
+      }
+      return $.noop;
+    },
     prevent : function(e){
       if (e.cancelable){ e.preventDefault(); }
       return false;
     },
     storePoints : function(e, data){
+      
       if (e.touches === undefined && e.originalEvent !== undefined){
         // jQuery Event normalization does not preserve the event.touches
         // we just try to restore it from original event
@@ -145,7 +188,7 @@
       }
     
       // calculate the position of the pixel in target of the small view image
-      offset = data.target.offset();
+      var offset = data.target.offset();
       data.targetX = data.currentX - offset.left;
       data.targetY = data.currentY - offset.top;
       return false;
@@ -207,6 +250,7 @@
         position : "absolute", top : 0, left : 0,
         overflow : "hidden", width : w, height : h
       };
+      data.sensEl.css(css);
       data.tintEl.css(css);
       data.viewEl.css(css).css({
         "background-image"  : ["url('", data.source, "')"].join(""),
@@ -236,6 +280,7 @@
         break;
         case "inner":
           data.zoomEl.css(css);
+          data.lensEl.remove();
         break;
         case "right":
           data.zoomEl.css(css).css({
@@ -272,7 +317,7 @@
       }
     },
     updateBackground : function(data){
-      var w = data.width;  var zw = data.zWidth; var lw = data.lensEl.innerWidth();
+      var w = data.width;  var zw = data.zWidth;  var lw = data.lensEl.innerWidth();
       var h = data.height; var zh = data.zHeight; var lh = data.lensEl.innerHeight();
       var x, y;
       
@@ -313,38 +358,38 @@
     },
     rebindEvents : function(data){
       var $this = data.target;
+      var sens = data.sensEl;
       $this.unbind('.spritezoom');
+      sens.unbind('.spritezoom');
       
-      $this.bind("mousemove.spritezoom", function(e){
+      sens.bind("mousemove.spritezoom", function(e){
         helper.storePoints(e, $this.data('spritezoom'));
       });
       
-      var beh = data.behavior;
-      if (typeof(data.behavior) === "string"){
-        beh = behavior[data.behavior];
-      }
-      if (!beh){
-        beh = {};
+      var beh = data.behavior || {};
+      if (typeof beh === "string"){
+        beh = behavior[data.behavior] || {};
       }
       
       // rebind interaction events
-      $this.bind('mousedown.spritezoom',  beh.mousedown  || $.noop);
-      $this.bind('mousemove.spritezoom',  beh.mousemove  || $.noop);
-      $this.bind('mouseup.spritezoom',    beh.mouseup    || $.noop);
-      $this.bind('mouseenter.spritezoom', beh.mouseenter || $.noop);
-      $this.bind('mouseover.spritezoom',  beh.mouseover  || $.noop);
-      $this.bind('mouseleave.spritezoom', beh.mouseleave || $.noop);
-      $this.bind('dblclick.spritezoom',   beh.dblclick   || $.noop);
+      
+      sens.bind('mousedown.spritezoom',  helper.wrap(beh.mousedown, data));
+      sens.bind('mousemove.spritezoom',  helper.wrap(beh.mousemove, data));
+      sens.bind('mouseup.spritezoom',    helper.wrap(beh.mouseup, data));
+      sens.bind('mouseenter.spritezoom', helper.wrap(beh.mouseenter, data));
+      sens.bind('mouseover.spritezoom',  helper.wrap(beh.mouseover, data));
+      sens.bind('mouseleave.spritezoom', helper.wrap(beh.mouseleave, data));
+      sens.bind('dblclick.spritezoom',   helper.wrap(beh.dblclick, data));
 
       if (data.touchable){
-        $this.bind('touchstart.spritezoom',  beh.touchstart  || $.noop);
-        $this.bind('touchmove.spritezoom',   beh.touchmove   || $.noop);
-        $this.bind('touchend.spritezoom',    beh.touchend    || $.noop);
-        $this.bind('touchcancel.spritezoom', beh.touchcancel || $.noop);
-        $this.bind('click.spritezoom',         helper.prevent); 
-        $this.bind('gesturestart.spritezoom',  helper.prevent); 
-        $this.bind('gesturechange.spritezoom', helper.prevent); 
-        $this.bind('gestureend.spritezoom',    helper.prevent); 
+        sens.bind('touchstart.spritezoom',  helper.wrap(beh.touchstart, data));
+        sens.bind('touchmove.spritezoom',   helper.wrap(beh.touchmove, data));
+        sens.bind('touchend.spritezoom',    helper.wrap(beh.touchend, data));
+        sens.bind('touchcancel.spritezoom', helper.wrap(beh.touchcancel, data));
+        sens.bind('click.spritezoom',         helper.prevent); 
+        sens.bind('gesturestart.spritezoom',  helper.prevent); 
+        sens.bind('gesturechange.spritezoom', helper.prevent); 
+        sens.bind('gestureend.spritezoom',    helper.prevent); 
       }
       
       if (typeof(data.onLoad) == "function"){
@@ -352,49 +397,14 @@
       }
     }
   };
-  
-  var behavior = {
-    hover : {
-      mousedown  : $.noop,
-      mousemove  : function(e){ 
-        $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
-        $(this).spritezoom("update");
-      },
-      mouseup    : $.noop,
-      mouseenter : function(e, instance){
-        $(this).spritezoom("update");
-        $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
-      },
-      mouseover  : function(e, instance){ 
-        $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
-      },
-      mouseleave : function(e, instance){ 
-        $(this).spritezoom("hideLayer", ["tint", "zoom", "lens"]);
-        $(this).spritezoom("update");
-      },
-      dblclick   : $.noop
-    },
-    click : {
-      mousedown  : function(e, instance){
-        $(this).spritezoom("showLayer", ["view", "tint", "zoom", "lens"]);
-        $(this).spritezoom("update");
-      },
-      mousemove  : function(e, instance){ 
-        $(this).spritezoom("update");
-      },
-      mouseup    : function(e, instance){ 
-        $(this).spritezoom("hideLayer", ["tint", "zoom", "lens"]);
-        $(this).spritezoom("update");
-      },
-      mouseenter : function(e, instance){
-        $(this).spritezoom("update");
-      },
-      mouseover  : $.noop,
-      mouseleave : function(e, instance){ 
-        $(this).spritezoom("hideLayer", ["tint", "zoom", "lens"]);
-        $(this).spritezoom("update");
-      },
-      dblclick   : $.noop
+
+  $.fn.spritezoom = function(method) {
+    if ( methods[method] ) {
+      return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
     }
+    if (typeof method === 'object' || !method) {
+      return methods.init.apply(this, arguments);
+    }
+    $.error( 'Method ' +  method + ' does not exist on jQuery.spritezoom' );
   };
-}(jQuery));
+}(window.jQuery));

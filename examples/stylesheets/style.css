@@ -1,6 +1,9 @@
 img{
   border: 0px;
 }
+a{
+  text-decoration: none;
+}
 .spritezoom-container{
   margin: 10px;
   text-decoration: none;
@@ -26,4 +29,9 @@ img{
   color: white;
   padding: 3px;
   text-align: center;
+}
+
+.example{
+  margin: 20px;
+  cursor: none;
 }

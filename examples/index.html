@@ -8,33 +8,32 @@
     
     <h1>Examples</h1>
     
-    <div class="spritezoom1"></div>
+    <div class="example zoom1"></div>
 
-    <div class="spritezoom2"></div>
+    <div class="example zoom2"></div>
     
-    <a href="images/denon-zoom.jpg" class="spritezoom3" title="Image Title">
-      <img src="images/denon-view.jpg" title="Zoom Title"/>
+    <a href="images/zoom.jpg" class="example zoom3" title="Genie lamp">
+      <img src="images/small.jpg" title="Genie lamp"/>
     </a>
         
     <script type="text/javascript">
       $(function(){
-        $(".spritezoom1").spritezoom({
+        $(".zoom1").spritezoom({
           border  : 6,
-          source  : "images/denon-view.jpg",
-          zSource : "images/denon-zoom.jpg",
+          source  : "images/small.jpg",
+          zSource : "images/zoom.jpg",
           layout  : "right",
-          title   : "ASDASDASD",
-          zTitle   : "ASDASDASD"
+          title   : "Genie lamp"
         });
 
-        $(".spritezoom2").spritezoom({
+        $(".zoom2").spritezoom({
           border  : 6,
-          source  : "images/denon-view.jpg",
-          zSource : "images/denon-zoom.jpg",
+          source  : "images/small.jpg",
+          zSource : "images/zoom.jpg",
           layout  : "magnify"
         });
 
-        $(".spritezoom3").spritezoom({});
+        $(".zoom3").spritezoom({});
       });
       
     </script>
