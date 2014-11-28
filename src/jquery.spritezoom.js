@@ -94,11 +94,11 @@
           }
           // build html
           $this.empty();
-          settings.viewEl = $("<div class='spritezoom-view'></div").appendTo($this);
-          settings.tintEl = $("<div class='spritezoom-tint'></div").appendTo($this).hide();
-          settings.lensEl = $("<div class='spritezoom-lens'></div").appendTo($this).hide();
+          settings.viewEl = $("<div class='spritezoom-view'></div>").appendTo($this);
+          settings.tintEl = $("<div class='spritezoom-tint'></div>").appendTo($this).hide();
+          settings.lensEl = $("<div class='spritezoom-lens'></div>").appendTo($this).hide();
           settings.zoomEl = $("<div class='spritezoom-zoom'></div>").appendTo($this).hide();
-          settings.sensEl = $("<div class='spritezoom-sens'></div").appendTo($this);
+          settings.sensEl = $("<div class='spritezoom-sens'></div>").appendTo($this);
           settings.target = $this;
           settings.target.addClass("spritezoom-instance");
           // helper variables per layer
