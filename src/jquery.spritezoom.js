@@ -151,6 +151,7 @@
           d.fadingIn = false;
           d.el.stop(false, true).fadeTo(data.fadeOutSpeed, 0, function(){
             d.fadingOut = false;
+            $(this).hide();
           });
         }
       }
